@@ -7,6 +7,7 @@ from django.contrib.auth.models import (
     PermissionsMixin,
     BaseUserManager
 )
+from django.conf import settings
 
 
 def avatar_file_path(instance, filename):
@@ -15,6 +16,14 @@ def avatar_file_path(instance, filename):
     filename = f'{uuid.uuid4()}.{ext}'
 
     return os.path.join('uploads/avatar/', filename)
+
+
+def thread_img_file_path(instance, filename):
+    """Generating a file path for avatar image"""
+    ext = filename.split('.')[-1]
+    filename = f'{uuid.uuid4()}.{ext}'
+
+    return os.path.join('uploads/thread/', filename)
 
 
 class UserManager(BaseUserManager):
@@ -64,3 +73,37 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     USERNAME_FIELD = 'username'
     REQUIRED_FIELDS = ['email', ]
+
+
+# * 6CHAN APP MODELS
+
+
+class Board(models.Model):
+    """Board model for chan app in the system"""
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE
+    )
+    name = models.CharField(max_length=255, unique=True)
+    code = models.CharField(max_length=4, unique=True)
+    date_created = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
+
+class Thread(models.Model):
+    """Thread model for chan app in the system"""
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE
+    )
+    title = models.CharField(max_length=255)
+    content = models.TextField()
+    image = models.ImageField(upload_to=thread_img_file_path, null=True)
+    date_created = models.DateTimeField(auto_now_add=True)
+    board = models.ForeignKey('Board', on_delete=models.CASCADE)
+    is_edited = models.BooleanField(default=False)
+
+    def __str__(self):
+        return self.title

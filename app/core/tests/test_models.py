@@ -5,12 +5,46 @@ from unittest.mock import patch
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 
-from core import models
+from core.models import (
+    Board, Thread, avatar_file_path, thread_img_file_path
+)
 
 
 SAMPLE_EMAIL = 'test@gmail.com'
 SAMPLE_USERNAME = 'testuser'
 SAMPLE_PASS = 'testpass'
+
+
+def create_user(is_admin=False, **params):
+
+    defaults = {
+        'email': 'test@gmail.com',
+        'username': 'testuser',
+        'password': 'testpass'
+    }
+    defaults.update(**params)
+
+    if is_admin:
+        payload = {
+            'email': 'admin@gmail.com',
+            'username': 'admin',
+            'password': 'admin'
+        }
+
+        return get_user_model().objects.create_superuser(**payload)
+
+    return get_user_model().objects.create_user(**defaults)
+
+
+def create_board(user, **params):
+
+    defaults = {
+        'name': 'test board',
+        'code': 'tb'
+    }
+    defaults.update(**params)
+
+    return Board.objects.create(user=user, **defaults)
 
 
 class ModelTests(TestCase):
@@ -58,7 +92,7 @@ class ModelTests(TestCase):
         """Test that image is saved in correct location"""
         uuid = 'test-uuid'
         mock_uuid.return_value = uuid
-        file_path = models.avatar_file_path(None, 'myimage.jpg')
+        file_path = avatar_file_path(None, 'myimage.jpg')
 
         exp_path = f'uploads/avatar/{uuid}.jpg'
         self.assertEqual(file_path, exp_path)
@@ -102,3 +136,58 @@ class ModelTests(TestCase):
 
         self.assertTrue(user.is_staff)
         self.assertTrue(user.is_superuser)
+
+
+class ChanModelTests(TestCase):
+    """Testing for chan app model"""
+
+    def setUp(self):
+        self.admin = create_user(is_admin=True)
+
+    def test_create_board_in_db(self):
+        """Test creating a new board in database"""
+        name = 'politic'
+        code = 'pl'
+        board = Board.objects.create(
+            name=name,
+            code=code,
+            user=self.admin
+        )
+
+        self.assertEqual(str(board), name)
+        is_exists = Board.objects.filter(
+            user=self.admin,
+            code=code
+        ).exists()
+        self.assertTrue(is_exists)
+
+    def test_create_thread_in_db(self):
+        """Test create a new thread in database"""
+        user = create_user()
+        board = create_board(user=user)
+        title = 'Test thread'
+        content = 'Test content bla bla bla'
+        thread = Thread.objects.create(
+            title=title,
+            content=content,
+            user=user,
+            board=board
+        )
+
+        self.assertEqual(str(thread), title)
+        is_exists = Thread.objects.filter(
+            user=user,
+            title=title,
+            content=content
+        ).exists()
+        self.assertTrue(is_exists)
+
+    @patch('uuid.uuid4')
+    def test_thread_img_file_path(self, mock_uuid):
+        """Test thread image upload file path"""
+        uuid = 'test-uuid'
+        mock_uuid.return_value = uuid
+        file_path = thread_img_file_path(None, 'myimage.jpg')
+
+        exp_path = f'uploads/thread/{uuid}.jpg'
+        self.assertEqual(file_path, exp_path)
