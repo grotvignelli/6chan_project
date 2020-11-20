@@ -13,12 +13,15 @@ from django.conf import settings
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from core.models import Thread
+from core.models import Thread, Upvote, Downvote
 from core.tests.test_models import (
     create_user, create_board
 )
 
 from chan.serializers import ThreadSerializer
+
+
+# TODO ADD TEST FOR UPVOTE/DOWNVOTE SYSTEM
 
 
 THREAD_URL = reverse('6chan:thread-list')
@@ -27,6 +30,11 @@ THREAD_URL = reverse('6chan:thread-list')
 def detail_url(pk):
 
     return reverse('6chan:thread-detail', args=[pk])
+
+
+def vote_url(type, pk):
+
+    return reverse(f'6chan:thread-{type}-thread', args=[pk])
 
 
 def create_payload(**params):
@@ -205,3 +213,139 @@ class PrivateThreadApiTests(TestCase):
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
         self.assertNotEqual(payload['title'], thread.title)
         self.assertNotEqual(payload['content'], thread.content)
+
+    def test_upvote_thread(self):
+        """Test upvoting a thread in API"""
+        thread = create_thread(
+            user=self.user, board=self.board
+        )
+        payload = {
+            'thread': thread.id
+        }
+        url = vote_url('upvote', thread.id)
+
+        res = self.client.post(url, payload)
+        thread.refresh_from_db()
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(thread.upvote_thread.count(), 1)
+
+    def test_downvote_thread(self):
+        """Test downvoting a thread in API"""
+        thread = create_thread(
+            user=self.user, board=self.board
+        )
+        payload = {'thread': thread.id, }
+        url = vote_url('downvote', thread.id)
+
+        res = self.client.post(url, payload)
+        thread.refresh_from_db()
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(thread.downvote_thread.count(), 1)
+
+    def test_upvote_to_other_user_thread(self):
+        """Test upvoting to other user thread"""
+        user2 = create_user(
+            username='other', email='other@gmail.com',
+        )
+        thread = create_thread(
+            user=user2, board=self.board
+        )
+        url = vote_url('upvote', thread.id)
+        payload = {'thread': thread.id, }
+
+        res = self.client.post(url, payload)
+        thread.refresh_from_db()
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(thread.upvote_thread.count(), 1)
+
+    def test_downvote_to_other_user_thread(self):
+        """Test downvoting to other user thread"""
+        user2 = create_user(
+            username='other', email='other@gmail.com',
+        )
+        thread = create_thread(
+            user=user2, board=self.board
+        )
+        url = vote_url('downvote', thread.id)
+        payload = {'thread': thread.id, }
+
+        res = self.client.post(url, payload)
+        thread.refresh_from_db()
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(thread.downvote_thread.count(), 1)
+
+    def test_upvoting_thread_already_upvote(self):
+        """Test upvoting thread that already upvoted"""
+        thread = create_thread(
+            user=self.user, board=self.board
+        )
+        Upvote.objects.create(
+            user=self.user, thread=thread
+        )
+        url = vote_url('upvote', thread.id)
+        payload = {'thread': thread.id}
+
+        res = self.client.post(url, payload)
+        thread.refresh_from_db()
+
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(thread.upvote_thread.count(), 1)
+
+    def test_downvote_thread_already_downvote(self):
+        """Test upvoting thread that already upvoted"""
+        thread = create_thread(
+            user=self.user, board=self.board
+        )
+        Downvote.objects.create(
+            user=self.user, thread=thread
+        )
+        url = vote_url('downvote', thread.id)
+        payload = {'thread': thread.id}
+
+        res = self.client.post(url, payload)
+        thread.refresh_from_db()
+
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(thread.downvote_thread.count(), 1)
+
+    def test_upvote_already_downvote_same_thread(self):
+        """Test that upvoting a same thread when user already
+        downvoted before will deleted downvote data"""
+        thread = create_thread(
+            user=self.user, board=self.board
+        )
+        Downvote.objects.create(
+            user=self.user, thread=thread
+        )
+        url = vote_url('upvote', thread.id)
+        payload = {'thread': thread.id}
+
+        res = self.client.post(url, payload)
+        thread.refresh_from_db()
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(thread.downvote_thread.count(), 0)
+        self.assertEqual(thread.upvote_thread.count(), 1)
+
+    def test_downvote_already_upvote_same_thread(self):
+        """Test that downvoting a same thread when user already
+        upvoted before will deleted upvote data"""
+        thread = create_thread(
+            user=self.user, board=self.board
+        )
+        Upvote.objects.create(
+            user=self.user, thread=thread
+        )
+        url = vote_url('downvote', thread.id)
+        payload = {'thread': thread.id}
+
+        res = self.client.post(url, payload)
+        thread.refresh_from_db()
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(thread.upvote_thread.count(), 0)
+        self.assertEqual(thread.downvote_thread.count(), 1)

@@ -6,7 +6,8 @@ from django.test import TestCase
 from django.contrib.auth import get_user_model
 
 from core.models import (
-    Board, Thread, avatar_file_path, thread_img_file_path
+    Board, Thread, Upvote, Downvote,
+    avatar_file_path, thread_img_file_path
 )
 
 
@@ -30,6 +31,7 @@ def create_user(is_admin=False, **params):
             'username': 'admin',
             'password': 'admin'
         }
+        payload.update(**params)
 
         return get_user_model().objects.create_superuser(**payload)
 
@@ -191,3 +193,47 @@ class ChanModelTests(TestCase):
 
         exp_path = f'uploads/thread/{uuid}.jpg'
         self.assertEqual(file_path, exp_path)
+
+    def test_add_upvote_to_thread(self):
+        """Test upvote to the thread"""
+        admin = create_user(
+            is_admin=True,
+            username='admin2',
+            email='admin2@gmail.com',
+        )
+        user = create_user()
+        board = create_board(user=admin)
+        thread = Thread.objects.create(
+            user=user,
+            board=board,
+            title='test thread',
+            content='test content'
+        )
+        Upvote.objects.create(
+            user=user,
+            thread=thread
+        )
+
+        self.assertEqual(thread.upvote_thread.count(), 1)
+
+    def test_add_downvote_to_thread(self):
+        """Test downvote to the thread"""
+        admin = create_user(
+            is_admin=True,
+            username='admin2',
+            email='admin2@gmail.com',
+        )
+        user = create_user()
+        board = create_board(user=admin)
+        thread = Thread.objects.create(
+            user=user,
+            board=board,
+            title='test thread',
+            content='test content'
+        )
+        Downvote.objects.create(
+            user=user,
+            thread=thread
+        )
+
+        self.assertEqual(thread.downvote_thread.count(), 1)

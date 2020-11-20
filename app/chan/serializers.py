@@ -1,6 +1,8 @@
 from rest_framework import serializers
 
-from core.models import Board, Thread
+from core.models import (
+    Board, Thread, Upvote, Downvote
+)
 
 
 class BoardSerializer(serializers.ModelSerializer):
@@ -22,9 +24,11 @@ class ThreadSerializer(serializers.ModelSerializer):
         model = Thread
         fields = [
             'id', 'title', 'content', 'image',
-            'date_created', 'board', 'is_edited'
+            'date_created', 'board',
+            'upvote_thread', 'downvote_thread',
+            'is_edited'
         ]
-        read_only_fields = ['id', ]
+        read_only_fields = ['id', 'is_edited', ]
 
     def update(self, instance, validated_data):
         """Updating is_edited thread fields"""
@@ -35,3 +39,27 @@ class ThreadSerializer(serializers.ModelSerializer):
         instance.save()
 
         return instance
+
+
+class UpvoteSerializer(serializers.ModelSerializer):
+    """Serializer for upvote to thread"""
+    thread = serializers.PrimaryKeyRelatedField(
+        queryset=Thread.objects.all()
+    )
+
+    class Meta:
+        model = Upvote
+        fields = ['id', 'thread']
+        read_only_fields = ['id', ]
+
+
+class DownvoteSerializer(serializers.ModelSerializer):
+    """Serializer for upvote to thread"""
+    thread = serializers.PrimaryKeyRelatedField(
+        queryset=Thread.objects.all()
+    )
+
+    class Meta:
+        model = Downvote
+        fields = ['id', 'thread']
+        read_only_fields = ['id', ]

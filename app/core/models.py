@@ -74,6 +74,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     USERNAME_FIELD = 'username'
     REQUIRED_FIELDS = ['email', ]
 
+    def __str__(self):
+        return self.username
+
 
 # * 6CHAN APP MODELS
 
@@ -107,3 +110,29 @@ class Thread(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class Upvote(models.Model):
+    """Upvote model for thread"""
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE
+    )
+    thread = models.ForeignKey(
+        'Thread',
+        on_delete=models.CASCADE,
+        related_name='upvote_thread'
+    )
+
+
+class Downvote(models.Model):
+    """Upvote model for thread"""
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE
+    )
+    thread = models.ForeignKey(
+        'Thread',
+        on_delete=models.CASCADE,
+        related_name='downvote_thread'
+    )
