@@ -106,14 +106,15 @@ class Board(models.Model):
 class Thread(models.Model):
     """Thread model for chan app in the system"""
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE
     )
     title = models.CharField(max_length=255)
     content = models.TextField()
     image = models.ImageField(upload_to=thread_img_file_path, null=True)
     date_created = models.DateTimeField(auto_now_add=True)
-    board = models.ForeignKey('Board', on_delete=models.CASCADE)
+    board = models.ForeignKey(
+        'Board', on_delete=models.CASCADE, related_name='thread'
+    )
     is_edited = models.BooleanField(default=False)
 
     def __str__(self):

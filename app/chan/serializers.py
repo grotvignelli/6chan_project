@@ -10,7 +10,7 @@ class BoardSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Board
-        fields = ['id', 'name', 'code']
+        fields = ['id', 'name', 'code', 'thread']
         read_only_fields = ['id', ]
 
 
