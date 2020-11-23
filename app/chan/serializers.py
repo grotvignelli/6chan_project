@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from core.models import (
-    Board, Thread, Upvote, Downvote
+    Board, Thread, Upvote, Downvote, Reply
 )
 
 
@@ -24,21 +24,39 @@ class ThreadSerializer(serializers.ModelSerializer):
         model = Thread
         fields = [
             'id', 'title', 'content', 'image',
-            'date_created', 'board',
+            'date_created', 'reply_to_thread', 'board',
             'upvote_thread', 'downvote_thread',
             'is_edited'
         ]
-        read_only_fields = ['id', 'is_edited', ]
+        read_only_fields = ['id', 'is_edited', 'reply_to_thread']
 
     def update(self, instance, validated_data):
         """Updating is_edited thread fields"""
-        instance.title = validated_data.get('title')
-        instance.content = validated_data.get('content')
-        instance.image = validated_data.get('image')
+        for attr, val in validated_data.items():
+            if val:
+                setattr(instance, attr, val)
         instance.is_edited = True
         instance.save()
 
         return instance
+
+
+class ReplySerializer(serializers.ModelSerializer):
+    """Serializer for reply"""
+    reply = serializers.PrimaryKeyRelatedField(
+        queryset=Reply.objects.all(), required=False
+    )
+    thread = serializers.PrimaryKeyRelatedField(
+        queryset=Thread.objects.all(), required=False
+    )
+
+    class Meta:
+        model = Reply
+        fields = [
+            'id', 'text', 'image', 'date_created',
+            'thread', 'reply', 'is_edited', 'is_deleted'
+        ]
+        read_only_fields = ['id', 'is_edited', 'is_deleted']
 
 
 class UpvoteSerializer(serializers.ModelSerializer):

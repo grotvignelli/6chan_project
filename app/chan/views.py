@@ -8,13 +8,14 @@ from rest_framework.response import Response
 
 from chan.serializers import (
     BoardSerializer, ThreadSerializer,
-    UpvoteSerializer, DownvoteSerializer
+    UpvoteSerializer, DownvoteSerializer,
+    ReplySerializer
 )
 
-from core.models import Board, Thread
+from core.models import Board, Thread, Reply
 
 
-class ThreadPermissions(permissions.BasePermission):
+class ObjectPermissions(permissions.BasePermission):
     """Giving an appropriate permission for thread"""
 
     def has_object_permission(self, request, view, obj):
@@ -52,15 +53,21 @@ class ManageThreadViewSet(viewsets.ModelViewSet):
     authentication_classes = [authentication.TokenAuthentication, ]
     queryset = Thread.objects.all()
 
+    def perform_create(self, serializer):
+        """Create and save thread"""
+        serializer.save(user=self.request.user)
+
     def get_permissions(self):
         """Return permission based on action"""
-        vote_action = ['upvote_thread', 'downvote_thread']
+        action = [
+            'upvote_thread', 'downvote_thread', 'reply_to_thread'
+        ]
 
-        if self.action == 'list' or self.action in vote_action:
+        if self.action == 'list' or self.action in action:
             permission_classes = [permissions.AllowAny, ]
         else:
             permission_classes = [
-                permissions.IsAuthenticated, ThreadPermissions
+                permissions.IsAuthenticated, ObjectPermissions
             ]
 
         return [permission() for permission in permission_classes]
@@ -143,6 +150,26 @@ class ManageThreadViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+
+class ManageReplyViewSet(viewsets.ModelViewSet):
+    """Viewset for manage Reply in API"""
+    authentication_classes = [authentication.TokenAuthentication, ]
+    serializer_class = ReplySerializer
+    queryset = Reply.objects.all()
+
     def perform_create(self, serializer):
-        """Create and save thread"""
+        """Create and save reply"""
         serializer.save(user=self.request.user)
+
+    def get_permissions(self):
+        """Return permission based on action"""
+        actions = ['list', 'retrieve']
+
+        if self.action in actions:
+            permission_classes = [permissions.AllowAny, ]
+        else:
+            permission_classes = [
+                permissions.IsAuthenticated, ObjectPermissions
+            ]
+
+        return [permission() for permission in permission_classes]

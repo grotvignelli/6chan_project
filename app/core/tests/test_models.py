@@ -6,7 +6,7 @@ from django.test import TestCase
 from django.contrib.auth import get_user_model
 
 from core.models import (
-    Board, Thread, Upvote, Downvote,
+    Board, Thread, Upvote, Downvote, Reply,
     avatar_file_path, thread_img_file_path
 )
 
@@ -145,6 +145,21 @@ class ChanModelTests(TestCase):
 
     def setUp(self):
         self.admin = create_user(is_admin=True)
+        self.user = create_user(
+            username='setUp user',
+            email='setup@gmail.com'
+        )
+        self.board = create_board(
+            user=self.admin,
+            name='test board',
+            code='tb'
+        )
+        self.thread = Thread.objects.create(
+            user=self.user,
+            title='setup thread',
+            content='setup content',
+            board=self.board
+        )
 
     def test_create_board_in_db(self):
         """Test creating a new board in database"""
@@ -165,20 +180,18 @@ class ChanModelTests(TestCase):
 
     def test_create_thread_in_db(self):
         """Test create a new thread in database"""
-        user = create_user()
-        board = create_board(user=user)
         title = 'Test thread'
         content = 'Test content bla bla bla'
         thread = Thread.objects.create(
             title=title,
             content=content,
-            user=user,
-            board=board
+            user=self.user,
+            board=self.board
         )
 
         self.assertEqual(str(thread), title)
         is_exists = Thread.objects.filter(
-            user=user,
+            user=self.user,
             title=title,
             content=content
         ).exists()
@@ -196,44 +209,58 @@ class ChanModelTests(TestCase):
 
     def test_add_upvote_to_thread(self):
         """Test upvote to the thread"""
-        admin = create_user(
-            is_admin=True,
-            username='admin2',
-            email='admin2@gmail.com',
-        )
-        user = create_user()
-        board = create_board(user=admin)
-        thread = Thread.objects.create(
-            user=user,
-            board=board,
-            title='test thread',
-            content='test content'
-        )
         Upvote.objects.create(
-            user=user,
-            thread=thread
+            user=self.user,
+            thread=self.thread
         )
 
-        self.assertEqual(thread.upvote_thread.count(), 1)
+        self.assertEqual(self.thread.upvote_thread.count(), 1)
 
     def test_add_downvote_to_thread(self):
         """Test downvote to the thread"""
-        admin = create_user(
-            is_admin=True,
-            username='admin2',
-            email='admin2@gmail.com',
-        )
-        user = create_user()
-        board = create_board(user=admin)
-        thread = Thread.objects.create(
-            user=user,
-            board=board,
-            title='test thread',
-            content='test content'
-        )
         Downvote.objects.create(
-            user=user,
-            thread=thread
+            user=self.user,
+            thread=self.thread
         )
 
-        self.assertEqual(thread.downvote_thread.count(), 1)
+        self.assertEqual(self.thread.downvote_thread.count(), 1)
+
+    def test_create_reply(self):
+        """Test create a reply in the db"""
+        text = 'test reply'
+        reply = Reply.objects.create(
+            user=self.user,
+            text=text,
+            thread=self.thread
+        )
+
+        self.assertEqual(str(reply), text)
+        is_exists = self.thread.reply_to_thread.filter(
+            user=self.user,
+            text=text
+        ).exists()
+        self.assertTrue(is_exists)
+
+    def test_create_reply_to_reply(self):
+        user2 = create_user(
+            username='user2',
+            email='user2@gmail.com',
+        )
+        reply = Reply.objects.create(
+            user=self.user,
+            text='text text',
+            thread=self.thread
+        )
+        text = 'test reply to reply'
+        reply_to_reply = Reply.objects.create(
+            user=user2,
+            text=text,
+            reply=reply
+        )
+
+        self.assertEqual(str(reply_to_reply), text)
+        is_exists = reply.reply_to_reply.filter(
+            user=user2,
+            text=text
+        ).exists()
+        self.assertTrue(is_exists)

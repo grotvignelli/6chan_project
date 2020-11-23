@@ -26,6 +26,14 @@ def thread_img_file_path(instance, filename):
     return os.path.join('uploads/thread/', filename)
 
 
+def reply_img_file_path(instance, filename):
+    """Generating a file path for avatar image"""
+    ext = filename.split('.')[-1]
+    filename = f'{uuid.uuid4()}.{ext}'
+
+    return os.path.join('uploads/reply/', filename)
+
+
 class UserManager(BaseUserManager):
     """Custom user model manager to support custom user model"""
 
@@ -110,6 +118,34 @@ class Thread(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class Reply(models.Model):
+    """Reply model for thread"""
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE
+    )
+    text = models.TextField()
+    image = models.ImageField(upload_to=reply_img_file_path, null=True)
+    date_created = models.DateTimeField(auto_now_add=True)
+    thread = models.ForeignKey(
+        'Thread',
+        on_delete=models.CASCADE,
+        related_name='reply_to_thread',
+        null=True
+    )
+    reply = models.ForeignKey(
+        'self',
+        on_delete=models.CASCADE,
+        related_name='reply_to_reply',
+        null=True
+    )
+    is_edited = models.BooleanField(default=False)
+    is_deleted = models.BooleanField(default=False)
+
+    def __str__(self):
+        return self.text
 
 
 class Upvote(models.Model):
