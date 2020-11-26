@@ -21,7 +21,7 @@ from core.tests.test_models import (
 from chan.serializers import ThreadSerializer
 
 
-# TODO ADD TEST FOR UPVOTE/DOWNVOTE SYSTEM
+# TODO ADD TEST FOR HOT THREAD AND RECENT THREAD FEATURE
 
 
 THREAD_URL = reverse('6chan:thread-list')
@@ -82,7 +82,9 @@ class PublicThreadApiTests(TestCase):
         res = self.client.get(THREAD_URL)
 
         self.assertEqual(res.status_code, status.HTTP_200_OK)
-        threads = Thread.objects.all()
+        threads = Thread.objects.all().order_by(
+            '-reply_to_thread__date_created'
+        )
         serializer = ThreadSerializer(threads, many=True)
         self.assertEqual(res.data, serializer.data)
 
@@ -292,8 +294,8 @@ class PrivateThreadApiTests(TestCase):
         res = self.client.post(url, payload)
         thread.refresh_from_db()
 
-        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(thread.upvote_thread.count(), 1)
+        self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(thread.upvote_thread.count(), 0)
 
     def test_downvote_thread_already_downvote(self):
         """Test upvoting thread that already upvoted"""
@@ -309,8 +311,8 @@ class PrivateThreadApiTests(TestCase):
         res = self.client.post(url, payload)
         thread.refresh_from_db()
 
-        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(thread.downvote_thread.count(), 1)
+        self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(thread.downvote_thread.count(), 0)
 
     def test_upvote_already_downvote_same_thread(self):
         """Test that upvoting a same thread when user already

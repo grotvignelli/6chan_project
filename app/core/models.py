@@ -143,7 +143,6 @@ class Reply(models.Model):
         null=True
     )
     is_edited = models.BooleanField(default=False)
-    is_deleted = models.BooleanField(default=False)
 
     def __str__(self):
         return self.text

@@ -54,9 +54,9 @@ class ReplySerializer(serializers.ModelSerializer):
         model = Reply
         fields = [
             'id', 'text', 'image', 'date_created',
-            'thread', 'reply', 'is_edited', 'is_deleted'
+            'thread', 'reply', 'is_edited'
         ]
-        read_only_fields = ['id', 'is_edited', 'is_deleted']
+        read_only_fields = ['id', 'is_edited']
 
 
 class UpvoteSerializer(serializers.ModelSerializer):

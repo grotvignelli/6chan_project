@@ -53,17 +53,34 @@ class ManageThreadViewSet(viewsets.ModelViewSet):
     authentication_classes = [authentication.TokenAuthentication, ]
     queryset = Thread.objects.all()
 
+    def _params_to_int(self, qs):
+        """Convert params string to integer"""
+        return [int(str_id) for str_id in qs.split(',')]
+
     def perform_create(self, serializer):
         """Create and save thread"""
         serializer.save(user=self.request.user)
 
+    def get_queryset(self):
+        """Return appropriate queryset"""
+        board = self.request.query_params.get('board')
+        queryset = self.queryset
+
+        if board:
+            board_id = self._params_to_int(board)
+            queryset = queryset.filter(board__id__in=board_id)
+
+        return queryset.order_by('-reply_to_thread__date_created')
+
     def get_permissions(self):
         """Return permission based on action"""
         action = [
-            'upvote_thread', 'downvote_thread', 'reply_to_thread'
+            'list', 'retrieve',
+            'upvote_thread', 'downvote_thread',
+            'reply_to_thread'
         ]
 
-        if self.action == 'list' or self.action in action:
+        if self.action in action:
             permission_classes = [permissions.AllowAny, ]
         else:
             permission_classes = [
@@ -72,7 +89,7 @@ class ManageThreadViewSet(viewsets.ModelViewSet):
 
         return [permission() for permission in permission_classes]
 
-    @action(methods=['post'], detail=True, url_path='upvote_thread')
+    @action(methods=['post'], detail=True, url_path='upvote-thread')
     def upvote_thread(self, request, pk=None):
         """Upvoting the thread"""
         thread = self.get_object()
@@ -88,10 +105,11 @@ class ManageThreadViewSet(viewsets.ModelViewSet):
         if serializer.is_valid():
 
             if request.user.id in upvote_user_id:
-                msg_err = _('You\'re already upvote this thread!')
+                thread.upvote_thread.filter(
+                    user=request.user
+                ).delete()
                 return Response(
-                    {'message': msg_err},
-                    status=status.HTTP_400_BAD_REQUEST
+                    status=status.HTTP_204_NO_CONTENT
                 )
 
             if request.user.id in downvote_user_id:
@@ -111,7 +129,7 @@ class ManageThreadViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-    @action(methods=['post'], detail=True, url_path='downvote_thread')
+    @action(methods=['post'], detail=True, url_path='downvote-thread')
     def downvote_thread(self, request, pk=None):
         """Upvoting the thread"""
         thread = self.get_object()
@@ -127,10 +145,11 @@ class ManageThreadViewSet(viewsets.ModelViewSet):
         if serializer.is_valid():
 
             if request.user.id in downvote_user_id:
-                msg_err = _('You\'re already downvote this thread!')
+                thread.downvote_thread.filter(
+                    user=request.user
+                ).delete()
                 return Response(
-                    {'message': msg_err},
-                    status=status.HTTP_400_BAD_REQUEST
+                    status=status.HTTP_204_NO_CONTENT
                 )
 
             if request.user.id in upvote_user_id:
